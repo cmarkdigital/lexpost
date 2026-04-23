@@ -547,58 +547,35 @@ Gere agora o HTML completo.`;
     }
   }
 
-  // Download slides as PNG using html2canvas
+  // Download: abre o HTML numa nova aba onde o usuário pode salvar os slides
   async function downloadSlides(html, titulo) {
     setDownloading(true);
-    try {
-      // Load html2canvas dynamically
-      if (!window.html2canvas) {
-        await new Promise((res, rej) => {
-          const s = document.createElement("script");
-          s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-          s.onload = res; s.onerror = rej;
-          document.head.appendChild(s);
-        });
-      }
 
-      // Create hidden iframe to render HTML
-      const iframe = document.createElement("iframe");
-      iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:1080px;height:1350px;border:none;";
-      document.body.appendChild(iframe);
-      iframe.contentDocument.write(html);
-      iframe.contentDocument.close();
+    // Injeta um botão de instrução no HTML gerado
+    const htmlComInstrucao = html.replace("</body>", `
+      <div style="position:fixed;bottom:0;left:0;right:0;background:#02253c;color:#d9aa66;
+        font-family:sans-serif;font-size:15px;font-weight:600;padding:16px 32px;
+        display:flex;align-items:center;justify-content:space-between;z-index:9999;
+        border-top:3px solid #d9aa66;">
+        <span>📥 Para salvar cada slide como PNG: clique com botão direito na imagem → "Salvar como..."</span>
+        <button onclick="window.print()" style="background:#d9aa66;color:#02253c;border:none;
+          padding:10px 24px;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:1px;">
+          🖨️ IMPRIMIR / SALVAR PDF
+        </button>
+      </div>
+      <style>
+        @media print {
+          body > div[style*="position:fixed"] { display: none !important; }
+          .slide { page-break-after: always; margin: 0 !important; box-shadow: none !important; }
+        }
+      </style>
+    </body>`);
 
-      await new Promise(r => setTimeout(r, 2500));
+    // Abre numa nova aba
+    const blob = new Blob([htmlComInstrucao], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
 
-      const slides = iframe.contentDocument.querySelectorAll(".slide");
-      if (!slides.length) {
-        alert("Nenhum slide encontrado. Tente baixar o HTML.");
-        document.body.removeChild(iframe);
-        setDownloading(false);
-        return;
-      }
-
-      for (let i = 0; i < slides.length; i++) {
-        const canvas = await window.html2canvas(slides[i], {
-          width: 1080, height: 1350,
-          scale: 1, useCORS: true, allowTaint: true,
-          backgroundColor: null,
-        });
-        const link = document.createElement("a");
-        link.download = `${titulo.slice(0, 30).replace(/\s/g, "-")}-slide-${String(i+1).padStart(2,"0")}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-        await new Promise(r => setTimeout(r, 400));
-      }
-
-      document.body.removeChild(iframe);
-    } catch (err) {
-      // Fallback: download HTML
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `${titulo.slice(0,30)}.html`; a.click();
-    }
     setDownloading(false);
   }
 
